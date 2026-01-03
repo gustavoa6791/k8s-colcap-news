@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.claude/
+
+# OS
+.DS_Store
+
+# Proyecto
+*.log
+*.tmp
+.env
+.env.local
+
+
+

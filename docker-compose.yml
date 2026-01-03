@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # Redis - Cola de mensajes (volátil, sin persistencia)
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    command: redis-server --save "" --appendonly no
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Producer - Indexador de Common Crawl
+  producer:
+    build: .
+    container_name: producer
+    command: python main.py producer
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - COLCAP_DATA_PATH=data/colcap_historico.csv
+      - TARGET_DOMAINS=eltiempo.com,elespectador.com,portafolio.co,larepublica.co
+      - DELAY_BETWEEN_INDEXES=10
+      - DELAY_BETWEEN_DOMAINS=3
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Workers - Escalable con: docker-compose up -d --scale worker=4
+  worker:
+    build: .
+    command: python main.py worker
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - COLCAP_DATA_PATH=data/colcap_historico.csv
+      - WORKER_BATCH_SIZE=4
+      - WORKER_THREADS=4
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+      producer:
+        condition: service_started
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+
+  # Dashboard - Interfaz web
+  dashboard:
+    build: .
+    container_name: dashboard
+    command: python main.py dashboard
+    ports:
+      - "8050:8050"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - COLCAP_DATA_PATH=data/colcap_historico.csv
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+

@@ -1,0 +1,13 @@
+requests
+redis
+warcio
+boto3
+pandas
+beautifulsoup4
+lxml
+dash
+dash-bootstrap-components
+plotly
+pysentimiento
+torch
+urllib3
